@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>和 Momiji 一起...</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --beige: #FDF5E6; 
+            --warm-pink: #FFD1DC;
+            --warm-yellow: #FFFACD;
+            --text-black: #4A4A4A; /* 墨水灰，更具文艺感 */
+            --white: #FFFFFF;
+            --handwriting: "Ma Shan Zheng", "Kaiti", "STKaiti", cursive;
+        }
+
+        body {
+            background-color: var(--beige);
+            /* 增加手工纸张纹理感 */
+            background-image: url("https://www.transparenttextures.com/patterns/handmade-paper.png");
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: var(--handwriting);
+            color: var(--text-black);
+            overflow: hidden;
+        }
+
+        h1 { 
+            font-weight: 400; 
+            margin-bottom: 30px; 
+            letter-spacing: 4px;
+            font-size: 2.2rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* 音乐控制按钮 */
+        #music-control {
+            position: fixed;
+            top: 25px; right: 25px;
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 20px; 
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            border: 1.5px solid var(--text-black);
+            border-radius: 5px;
+            cursor: pointer; 
+            font-size: 0.9rem;
+            transition: all 0.3s; 
+            z-index: 1000;
+        }
+        #music-control:hover { background: var(--warm-pink); }
+        .playing #music-icon { animation: heartBeat 1.5s infinite; color: #D46A7E; }
+
+        @keyframes heartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* 转盘容器 */
+        .wheel-box {
+            position: relative;
+            width: 450px;
+            height: 450px;
+            border: 12px solid white; /* 白色相框边框 */
+            border-radius: 50%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            background: white;
+        }
+
+        #wheel-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+            transition: transform 5s cubic-bezier(0.15, 0, 0.15, 1);
+        }
+
+        /* 猫爪指针 */
+        .pointer {
+            position: absolute;
+            top: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.1));
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .paw-wiggle {
+            animation: wiggle 0.5s infinite ease-in-out;
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: translateX(-50%) rotate(0deg); }
+            25% { transform: translateX(-50%) rotate(-8deg); }
+            75% { transform: translateX(-50%) rotate(8deg); }
+        }
+
+        /* 抽取按钮 */
+        .spin-btn {
+            margin-top: 40px;
+            padding: 12px 45px;
+            font-size: 1.3rem;
+            font-family: var(--handwriting);
+            background: var(--text-black);
+            color: var(--white);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .spin-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .spin-btn:active { transform: scale(0.95); }
+        .spin-btn:disabled { background: #999; cursor: not-allowed; }
+
+        /* 结果遮罩层 */
+        #result-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(253, 245, 230, 0.95);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 2000;
+            cursor: pointer;
+        }
+        #result-text { 
+            font-size: 2.8rem; 
+            color: #D46A7E; 
+            border-bottom: 2px dashed #D46A7E;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="music-control" onclick="toggleMusic()">
+        <span id="music-icon">♥</span>
+        <span id="music-text">Stay With You</span>
+    </div>
+    <audio id="bgm" loop><source src="stay-with-you.mp3" type="audio/mpeg"></audio>
+
+    <h1>今天和 Momiji 做什么？</h1>
+
+    <div class="wheel-box">
+        <div class="pointer" id="cat-paw">
+            <svg viewBox="0 0 100 120" width="70" height="84">
+                <path d="M20,50 Q20,20 50,20 Q80,20 80,50 Q80,80 50,110 Q20,80 20,50" fill="white" stroke="#4A4A4A" stroke-width="1" />
+                <ellipse cx="50" cy="55" rx="18" ry="14" fill="#FFD1DC" />
+                <circle cx="30" cy="35" r="7" fill="#FFD1DC" />
+                <circle cx="43" cy="28" r="8" fill="#FFD1DC" />
+                <circle cx="57" cy="28" r="8" fill="#FFD1DC" />
+                <circle cx="70" cy="35" r="7" fill="#FFD1DC" />
+            </svg>
+        </div>
+        
+        <svg id="wheel-svg" viewBox="0 0 100 100"></svg>
+    </div>
+
+    <button class="spin-btn" id="spin-button" onclick="startSpin()">开始抽取</button>
+
+    <div id="result-overlay" onclick="closeResult()">
+        <div id="result-text"></div>
+        <p style="font-size: 1.1rem; color: #888;">点击任意位置继续</p>
+    </div>
+
+    <script>
+        const options = ["一起学习", "一起码字", "一起打麻将", "一起玩饥荒", "一起玩星露谷", "一起睡觉", "一起出来玩"];
+        const colors = ['#FFD1DC', '#FFFACD', '#E0F2F1', '#FCE4EC', '#FFF9C4', '#F3E5F5', '#E1F5FE'];
+        
+        const svg = document.getElementById('wheel-svg');
+        const numOptions = options.length;
+        const anglePerStep = 360 / numOptions;
+
+        // 动态生成转盘
+        options.forEach((text, i) => {
+            const startAngle = i * anglePerStep;
+            const endAngle = (i + 1) * anglePerStep;
+            const x1 = 50 + 50 * Math.cos(Math.PI * startAngle / 180);
+            const y1 = 50 + 50 * Math.sin(Math.PI * startAngle / 180);
+            const x2 = 50 + 50 * Math.cos(Math.PI * endAngle / 180);
+            const y2 = 50 + 50 * Math.sin(Math.PI * endAngle / 180);
+            
+            const pathData = `M 50 50 L ${x1} ${y1} A 50 50 0 0 1 ${x2} ${y2} Z`;
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", pathData);
+            path.setAttribute("fill", colors[i % colors.length]);
+            path.setAttribute("stroke", "white");
+            path.setAttribute("stroke-width", "0.5");
+            svg.appendChild(path);
+
+            const textAngle = startAngle + anglePerStep / 2;
+            const tx = 50 + 32 * Math.cos(Math.PI * textAngle / 180);
+            const ty = 50 + 32 * Math.sin(Math.PI * textAngle / 180);
+            const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            txt.setAttribute("x", tx); txt.setAttribute("y", ty);
+            txt.setAttribute("fill", "#4A4A4A");
+            txt.setAttribute("font-size", "4.5");
+            txt.setAttribute("text-anchor", "middle");
+            txt.setAttribute("transform", `rotate(${textAngle + 90}, ${tx}, ${ty})`);
+            txt.textContent = text;
+            svg.appendChild(txt);
+        });
+
+        let currentRotation = 0;
+        let isSpinning = false;
+        const bgm = document.getElementById('bgm');
+
+        function startSpin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            document.getElementById('spin-button').disabled = true;
+            document.getElementById('cat-paw').classList.add('paw-wiggle');
+
+            const winnerIndex = Math.floor(Math.random() * numOptions);
+            const extraDegree = (360 - (winnerIndex * anglePerStep)) - (anglePerStep / 2);
+            currentRotation += (360 * 5) + extraDegree;
+            
+            svg.style.transform = `rotate(${currentRotation - 90}deg)`;
+
+            setTimeout(() => {
+                document.getElementById('cat-paw').classList.remove('paw-wiggle');
+                showResult(options[winnerIndex]);
+            }, 5000);
+        }
+
+        function showResult(result) {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#FFD1DC', '#FFFACD', '#4A4A4A'] });
+            document.getElementById('result-text').innerText = `恭喜，快去和 momiji ${result} 吧！`;
+            document.getElementById('result-overlay').style.display = 'flex';
+        }
+
+        function closeResult() {
+            document.getElementById('result-overlay').style.display = 'none';
+            document.getElementById('spin-button').disabled = false;
+            isSpinning = false;
+        }
+
+        function toggleMusic() {
+            if (bgm.paused) { bgm.play(); document.getElementById('music-control').classList.add('playing'); }
+            else { bgm.pause(); document.getElementById('music-control').classList.remove('playing'); }
+        }
+
+        // 首次点击互动以激活音乐
+        document.addEventListener('click', () => {
+            if (bgm.paused) { bgm.play(); document.getElementById('music-control').classList.add('playing'); }
+        }, { once: true });
+    </script>
+</body>
+</html>
